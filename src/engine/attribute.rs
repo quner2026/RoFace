@@ -149,8 +149,8 @@ impl AttributeAnalyzer {
         request.infer()?;
         
         // Parse output
-        // InsightFace GenderAge model outputs: [male_prob, female_prob, age_factor]
-        // See: https://github.com/deepinsight/insightface/blob/master/python-package/insightface/model_zoo/attribute.py
+        // InsightFace GenderAge model outputs: [female_logit, male_logit, age_scale]
+        // See: https://github.com/deepinsight/insightface
         let output = request.get_output_tensor()?;
         let output_shape = output.get_shape()?;
         let output_len = output_shape.get_dimensions().iter().product::<i64>() as usize;
@@ -160,46 +160,36 @@ impl AttributeAnalyzer {
             std::slice::from_raw_parts(ptr, output_len).to_vec()
         };
         
-        // InsightFace genderage model output format: [male_logit, female_logit, age]
-        // The age value is directly the predicted age (not a factor to multiply)
-        // Gender logits need softmax to get proper probability/confidence
+        // InsightFace genderage model output format: [female_logit, male_logit, age_scale]
+        // - output[0]: Female logit
+        // - output[1]: Male logit  
+        // - output[2]: Age scale (0.0 ~ 1.0), multiply by 100 to get actual age
         tracing::debug!("GenderAge model raw output: {:?} (len={})", output_data, output_data.len());
         
         let (gender, gender_conf, age) = if output_data.len() == 3 {
-            // Format: [male_logit, female_logit, age]
-            // Apply softmax to gender logits for proper probability
-            let male_logit = output_data[0];
-            let female_logit = output_data[1];
-            let age_raw = output_data[2];
+            // Format: [female_logit, male_logit, age_scale]
+            let female_logit = output_data[0];
+            let male_logit = output_data[1];
+            let age_scale = output_data[2];
             
-            // Softmax for gender
-            let gender_logits = vec![male_logit, female_logit];
+            // Gender: compare logits directly (no softmax needed for decision)
+            // But compute confidence using softmax for proper probability
+            let gender_logits = vec![female_logit, male_logit];
             let gender_probs = self.softmax(&gender_logits);
-            let male_prob = gender_probs[0];
-            let female_prob = gender_probs[1];
+            let female_prob = gender_probs[0];
+            let male_prob = gender_probs[1];
             
-            tracing::debug!("Gender probs - male: {:.3}, female: {:.3}, age_raw: {:.3}", 
-                male_prob, female_prob, age_raw);
+            tracing::debug!("Gender probs - female: {:.3}, male: {:.3}, age_scale: {:.3}", 
+                female_prob, male_prob, age_scale);
             
-            let (gender, conf) = if female_prob > male_prob {
-                (Gender::Female, female_prob)
-            } else {
+            let (gender, conf) = if male_logit > female_logit {
                 (Gender::Male, male_prob)
+            } else {
+                (Gender::Female, female_prob)
             };
             
-            // Age: InsightFace genderage model outputs age directly or as age * scale
-            // Try direct age first, if too small then apply scaling
-            let age = if age_raw > 1.0 && age_raw < 120.0 {
-                // Direct age value
-                age_raw.round() as i32
-            } else if age_raw >= 0.0 && age_raw <= 1.0 {
-                // Normalized age [0, 1] -> multiply by 100
-                (age_raw * 100.0).round() as i32
-            } else {
-                // Negative or unusual value - might be a different encoding
-                // Some models use age = age_raw * 100 regardless
-                (age_raw.abs() * 100.0).round() as i32
-            };
+            // Age: age_scale is normalized [0, 1], multiply by 100 to get actual age
+            let age = (age_scale * 100.0).round() as i32;
             
             (gender, conf, age)
             
@@ -304,7 +294,7 @@ impl AttributeAnalyzer {
     }
 
     /// Convert image to NCHW tensor for GenderAge model
-    /// Note: This model expects raw [0, 255] pixel values in BGR order, NOT normalized!
+    /// This model expects RGB order with normalization: (x - 127.5) / 128.0
     fn image_to_tensor(&self, image: &DynamicImage) -> Array4<f32> {
         let rgb = image.to_rgb8();
         let (width, height) = rgb.dimensions();
@@ -314,18 +304,19 @@ impl AttributeAnalyzer {
         for y in 0..height {
             for x in 0..width {
                 let pixel = rgb.get_pixel(x, y);
-                // GenderAge model expects BGR order with RAW [0, 255] values (no normalization!)
-                // Channel 0 = B, Channel 1 = G, Channel 2 = R
-                tensor[[0, 0, y as usize, x as usize]] = pixel[2] as f32; // B
-                tensor[[0, 1, y as usize, x as usize]] = pixel[1] as f32; // G
-                tensor[[0, 2, y as usize, x as usize]] = pixel[0] as f32; // R
+                // GenderAge model expects RGB order with normalization: (x - 127.5) / 128.0
+                // Channel 0 = R, Channel 1 = G, Channel 2 = B
+                tensor[[0, 0, y as usize, x as usize]] = (pixel[0] as f32 - 127.5) / 128.0; // R
+                tensor[[0, 1, y as usize, x as usize]] = (pixel[1] as f32 - 127.5) / 128.0; // G
+                tensor[[0, 2, y as usize, x as usize]] = (pixel[2] as f32 - 127.5) / 128.0; // B
             }
         }
         
         tensor
     }
 
-    /// Convert image to grayscale tensor
+    /// Convert image to grayscale tensor for Emotion model
+    /// FER+ model expects raw pixel values [0, 255], NO normalization!
     fn image_to_tensor_grayscale(&self, image: &DynamicImage) -> Array4<f32> {
         let gray = image.to_luma8();
         let (width, height) = gray.dimensions();
@@ -335,7 +326,8 @@ impl AttributeAnalyzer {
         for y in 0..height {
             for x in 0..width {
                 let pixel = gray.get_pixel(x, y);
-                tensor[[0, 0, y as usize, x as usize]] = pixel[0] as f32 / 255.0;
+                // FER+ emotion model expects raw pixel values [0, 255], not normalized!
+                tensor[[0, 0, y as usize, x as usize]] = pixel[0] as f32;
             }
         }
         
