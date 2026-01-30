@@ -4,7 +4,7 @@ grpc_port = 50051
 
 [inference]
 # Device: "CPU", "GPU", or "AUTO"
-device = "CPU"
+device = "GPU"
 # Number of inference threads
 num_threads = 4
 # Model idle timeout in seconds (unload after inactivity)
