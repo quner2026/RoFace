@@ -1,0 +1,36 @@
+[server]
+rest_port = 3000
+grpc_port = 50051
+
+[inference]
+# Device: "CPU", "GPU", or "AUTO"
+device = "CPU"
+# Number of inference threads
+num_threads = 4
+# Model idle timeout in seconds (unload after inactivity)
+model_idle_timeout = 300
+# Enable batch inference
+batch_enabled = true
+# Maximum batch size
+batch_max_size = 8
+# Maximum wait time before processing incomplete batch (ms)
+batch_timeout_ms = 100
+
+[models]
+detector = "models/scrfd_10g_kps.onnx"
+embedder = "models/glint360k_r100.onnx"
+gender_age = "models/genderage.onnx"
+emotion = "models/emotion_ferplus.onnx"
+
+[recognition]
+# Similarity threshold for face matching
+similarity_threshold = 0.5
+# Embedding dimension
+embedding_dim = 512
+
+[storage]
+# Storage type: "sqlite" or "postgres"
+type = "sqlite"
+sqlite_path = "data/faces.db"
+# PostgreSQL connection string (used when type = "postgres")
+# postgres_url = "postgres://user:password@localhost/faces"

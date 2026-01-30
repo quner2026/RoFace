@@ -1,0 +1,65 @@
+[package]
+name = "roface"
+version = "1.1.0"
+edition = "2021"
+authors = ["Kio Face-Vino"]
+description = "High-performance face recognition service with OpenVINO"
+
+[dependencies]
+# OpenVINO - runtime linking for flexibility
+openvino = { version = "0.9", features = ["runtime-linking"] }
+
+# Async Runtime
+tokio = { version = "1", features = ["full", "tracing"] }
+
+# HTTP (REST API)
+axum = { version = "0.7", features = ["multipart", "macros"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace", "timeout", "fs"] }
+
+# gRPC
+tonic = "0.12"
+prost = "0.13"
+
+# Database (async, supports both SQLite and PostgreSQL)
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "postgres"] }
+
+# Image Processing
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+imageproc = "0.24"
+ndarray = "0.16"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Logging & Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Utils
+uuid = { version = "1", features = ["v4", "serde"] }
+thiserror = "1"
+anyhow = "1"
+async-trait = "0.1"
+parking_lot = "0.12"
+bytes = "1"
+
+# Base64 for image encoding in API
+base64 = "0.22"
+
+# EXIF for reading image orientation
+kamadak-exif = "0.5"
+
+# Date/time
+chrono = "0.4"
+
+[build-dependencies]
+tonic-build = "0.12"
+protoc-bin-vendored = "3.0"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

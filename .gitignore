@@ -1,0 +1,27 @@
+# Build artifacts
+/target/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Database
+/data/
+
+# Models (download separately)
+/models/*.onnx
+/models/*.xml
+/models/*.bin
+
+# Generated protobuf (except placeholder)
+# /src/proto/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local

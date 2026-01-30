@@ -1,0 +1,144 @@
+syntax = "proto3";
+
+package face;
+
+// Face Recognition Service
+service FaceService {
+  // Detect faces in an image
+  rpc Detect(DetectRequest) returns (DetectResponse);
+  
+  // Register a face to the database
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  
+  // Compare two faces (1:1 verification)
+  rpc Compare(CompareRequest) returns (CompareResponse);
+  
+  // Identify a face from the database (1:N search)
+  rpc Identify(IdentifyRequest) returns (IdentifyResponse);
+  
+  // Analyze face attributes (age, gender, emotion)
+  rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse);
+  
+  // Delete a registered face
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+  
+  // Health check
+  rpc Health(HealthRequest) returns (HealthResponse);
+}
+
+// Common types
+message BoundingBox {
+  float x1 = 1;
+  float y1 = 2;
+  float x2 = 3;
+  float y2 = 4;
+  float confidence = 5;
+}
+
+message Landmark {
+  float x = 1;
+  float y = 2;
+}
+
+message FaceDetection {
+  BoundingBox bbox = 1;
+  repeated Landmark landmarks = 2; // 5 keypoints
+}
+
+message FaceAttributes {
+  int32 age = 1;
+  string gender = 2;           // "male" | "female"
+  float gender_confidence = 3;
+  string emotion = 4;          // "neutral" | "happy" | "sad" | "angry" | "fear" | "disgust" | "surprise"
+  float emotion_confidence = 5;
+}
+
+// Detect
+message DetectRequest {
+  bytes image_data = 1;        // Raw image bytes (JPEG/PNG)
+  float confidence_threshold = 2; // Default: 0.5
+}
+
+message DetectResponse {
+  repeated FaceDetection faces = 1;
+  int32 inference_time_ms = 2;
+}
+
+// Register
+message RegisterRequest {
+  bytes image_data = 1;
+  string person_id = 2;        // Unique identifier
+  string person_name = 3;      // Display name
+  map<string, string> metadata = 4; // Optional metadata
+}
+
+message RegisterResponse {
+  bool success = 1;
+  string face_id = 2;          // UUID of the registered face
+  string message = 3;
+}
+
+// Compare (1:1)
+message CompareRequest {
+  bytes image1_data = 1;
+  bytes image2_data = 2;
+}
+
+message CompareResponse {
+  float similarity = 1;        // 0.0 - 1.0
+  bool is_same_person = 2;     // Based on threshold
+  int32 inference_time_ms = 3;
+}
+
+// Identify (1:N)
+message IdentifyRequest {
+  bytes image_data = 1;
+  int32 top_k = 2;             // Max results, default: 5
+  float threshold = 3;         // Min similarity, default: 0.5
+}
+
+message IdentifyResult {
+  string person_id = 1;
+  string person_name = 2;
+  string face_id = 3;
+  float similarity = 4;
+}
+
+message IdentifyResponse {
+  repeated IdentifyResult results = 1;
+  int32 inference_time_ms = 2;
+}
+
+// Analyze
+message AnalyzeRequest {
+  bytes image_data = 1;
+}
+
+message AnalyzeResponse {
+  repeated FaceAnalysis faces = 1;
+  int32 inference_time_ms = 2;
+}
+
+message FaceAnalysis {
+  BoundingBox bbox = 1;
+  FaceAttributes attributes = 2;
+}
+
+// Delete
+message DeleteRequest {
+  string face_id = 1;          // UUID of the face to delete
+}
+
+message DeleteResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Health
+message HealthRequest {}
+
+message HealthResponse {
+  bool healthy = 1;
+  string version = 2;
+  map<string, bool> models_loaded = 3; // detector, embedder, etc.
+}

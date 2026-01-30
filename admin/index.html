@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人脸识别服务 - 管理后台</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- 侧边导航 -->
+    <nav class="sidebar">
+        <div class="logo">
+            <div class="logo-icon">👤</div>
+            <span>Face Service</span>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item active" data-page="dashboard">
+                <span class="nav-icon">📊</span>
+                <span>仪表盘</span>
+            </li>
+            <li class="nav-item" data-page="recognize">
+                <span class="nav-icon">🎯</span>
+                <span>在线识别</span>
+            </li>
+            <li class="nav-item" data-page="tasks">
+                <span class="nav-icon">📋</span>
+                <span>最近任务</span>
+            </li>
+            <li class="nav-item" data-page="faces">
+                <span class="nav-icon">👥</span>
+                <span>人脸库</span>
+            </li>
+            <li class="nav-item" data-page="models">
+                <span class="nav-icon">⚙️</span>
+                <span>模型配置</span>
+            </li>
+        </ul>
+        <div class="nav-footer">
+            <div class="version">v1.0.0</div>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <!-- 顶部栏 -->
+        <header class="top-bar">
+            <h1 class="page-title">仪表盘</h1>
+            <div class="top-actions">
+                <div class="status-indicator online">
+                    <span class="status-dot"></span>
+                    <span>服务运行中</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 仪表盘页面 -->
+        <section id="page-dashboard" class="page active">
+            <!-- 统计卡片 -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="stat-total-faces">-</div>
+                        <div class="stat-label">注册人脸</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🔍</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="stat-today-tasks">-</div>
+                        <div class="stat-label">今日任务</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="stat-success-rate">-</div>
+                        <div class="stat-label">识别成功率</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⚡</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="stat-avg-time">-</div>
+                        <div class="stat-label">平均响应时间</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 模型状态 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>模型状态</h2>
+                </div>
+                <div class="card-body">
+                    <div class="model-grid" id="model-status">
+                        <!-- 动态填充 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 最近任务预览 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>最近任务</h2>
+                    <button class="btn btn-secondary btn-sm" onclick="switchPage('tasks')">查看全部</button>
+                </div>
+                <div class="card-body">
+                    <div class="task-list" id="recent-tasks-preview">
+                        <!-- 动态填充 -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 在线识别页面 -->
+        <section id="page-recognize" class="page">
+            <div class="page-header">
+                <h2>在线识别</h2>
+            </div>
+
+            <div class="recognize-container">
+                <div class="recognize-upload card">
+                    <div class="card-header">
+                        <h3>上传图片</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="file-upload" id="recognize-upload-area">
+                            <input type="file" id="recognize-image" accept="image/*"
+                                onchange="handleRecognizeImageSelect(event)">
+                            <div class="file-upload-content" id="recognize-upload-content">
+                                <div class="upload-icon">📷</div>
+                                <p>点击或拖拽图片到此处进行识别</p>
+                            </div>
+                            <img id="recognize-preview" class="recognize-preview" style="display:none">
+                        </div>
+                        
+                        <!-- 识别参数设置 -->
+                        <div class="recognize-settings" style="margin-top: 16px;">
+                            <div class="setting-row">
+                                <label class="setting-label">相似度阈值</label>
+                                <div class="setting-control">
+                                    <input type="range" id="similarity-threshold" min="0.3" max="0.9" step="0.05" value="0.5" 
+                                           oninput="updateThresholdDisplay(this.value)">
+                                    <span id="threshold-value" class="threshold-value">0.50</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="recognize-actions" style="margin-top: 16px; display: flex; gap: 12px;">
+                            <button class="btn btn-primary" onclick="performIdentify()" id="identify-btn">
+                                🔍 识别人脸
+                            </button>
+                            <button class="btn btn-secondary" onclick="performDetect()">
+                                📍 仅检测
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearRecognize()">
+                                🗑️ 清空
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recognize-result card">
+                    <div class="card-header">
+                        <h3>识别结果</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="recognize-result-container">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">🎯</div>
+                                <h3>等待识别</h3>
+                                <p>上传图片后点击识别按钮</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 任务历史页面 -->
+        <section id="page-tasks" class="page">
+            <div class="page-header">
+                <h2>任务历史</h2>
+                <div class="header-actions">
+                    <select id="task-filter" class="select-input">
+                        <option value="all">全部类型</option>
+                        <option value="detect">检测</option>
+                        <option value="identify">识别</option>
+                        <option value="register">注册</option>
+                        <option value="compare">比对</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="refreshTasks()">
+                        <span>🔄</span> 刷新
+                    </button>
+                    <button class="btn btn-danger" onclick="confirmDeleteAllTasks()">
+                        <span>🗑️</span> 清空历史
+                    </button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>类型</th>
+                                <th>结果</th>
+                                <th>耗时</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tasks-table-body">
+                            <!-- 动态填充 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 任务详情模态框 -->
+            <div id="task-detail-modal" class="modal">
+                <div class="modal-content modal-lg">
+                    <div class="modal-header">
+                        <h3>任务详情</h3>
+                        <button class="modal-close" onclick="closeModal('task-detail-modal')">&times;</button>
+                    </div>
+                    <div class="modal-body" id="task-detail-content">
+                        <!-- 动态填充 -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 人脸库页面 -->
+        <section id="page-faces" class="page">
+            <div class="page-header">
+                <h2>人脸库管理</h2>
+                <div class="header-actions">
+                    <div class="search-box">
+                        <input type="text" id="face-search" placeholder="搜索姓名或ID..." class="text-input">
+                        <button class="btn btn-icon" onclick="searchFaces()">🔍</button>
+                    </div>
+                    <button class="btn btn-primary" onclick="openModal('add-face-modal')">
+                        <span>➕</span> 添加人脸
+                    </button>
+                </div>
+            </div>
+
+            <div class="faces-grid" id="faces-grid">
+                <!-- 动态填充 -->
+            </div>
+
+            <div class="pagination" id="faces-pagination">
+                <!-- 动态填充 -->
+            </div>
+
+            <!-- 添加人脸模态框 -->
+            <div id="add-face-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>添加人脸</h3>
+                        <button class="modal-close" onclick="closeModal('add-face-modal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="add-face-form" onsubmit="handleAddFace(event)">
+                            <div class="form-group">
+                                <label for="person-id">人员ID *</label>
+                                <input type="text" id="person-id" class="text-input" required placeholder="唯一标识符">
+                            </div>
+                            <div class="form-group">
+                                <label for="person-name">姓名 *</label>
+                                <input type="text" id="person-name" class="text-input" required placeholder="显示名称">
+                            </div>
+                            <div class="form-group">
+                                <label for="face-image">人脸图片 *</label>
+                                <div class="file-upload" id="file-upload-area">
+                                    <input type="file" id="face-image" accept="image/*"
+                                        onchange="handleImageSelect(event)" required>
+                                    <div class="file-upload-content">
+                                        <div class="upload-icon">📷</div>
+                                        <p>点击或拖拽图片到此处</p>
+                                    </div>
+                                    <img id="image-preview" class="image-preview" style="display:none">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="metadata">元数据 (JSON)</label>
+                                <textarea id="metadata" class="text-input" rows="3"
+                                    placeholder='{"department": "技术部"}'></textarea>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="closeModal('add-face-modal')">取消</button>
+                                <button type="submit" class="btn btn-primary">添加</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 人脸详情模态框 -->
+            <div id="face-detail-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>人脸详情</h3>
+                        <button class="modal-close" onclick="closeModal('face-detail-modal')">&times;</button>
+                    </div>
+                    <div class="modal-body" id="face-detail-content">
+                        <!-- 动态填充 -->
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-danger" id="delete-face-btn">删除</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模型配置页面 -->
+        <section id="page-models" class="page">
+            <div class="page-header">
+                <h2>模型配置</h2>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" onclick="refreshModelStatus()">
+                        <span>🔄</span> 刷新状态
+                    </button>
+                </div>
+            </div>
+
+            <div class="models-list">
+                <!-- 人脸检测模型 -->
+                <div class="card model-card">
+                    <div class="card-header">
+                        <h3>🔍 人脸检测模型</h3>
+                        <span class="badge badge-success" id="detector-status">已加载</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="model-selector">
+                            <label class="setting-label">选择模型</label>
+                            <select id="detector-model-select" class="select-input" onchange="onDetectorModelChange(this.value)">
+                                <option value="scrfd_10g_kps" selected>SCRFD 10G KPS (推荐)</option>
+                                <option value="scrfd_2.5g_kps">SCRFD 2.5G KPS (快速)</option>
+                                <option value="retinaface_r50">RetinaFace R50 (高精度)</option>
+                            </select>
+                        </div>
+                        <div class="model-info" style="margin-top: 16px;">
+                            <div class="info-row">
+                                <span class="info-label">当前模型</span>
+                                <span class="info-value" id="model-detector-name">SCRFD 10G KPS</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">输入尺寸</span>
+                                <span class="info-value" id="detector-input-size">640 × 640</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">状态</span>
+                                <span class="info-value" id="detector-file-status">✅ 已下载</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 人脸识别模型 -->
+                <div class="card model-card">
+                    <div class="card-header">
+                        <h3>🧬 人脸识别模型</h3>
+                        <span class="badge badge-success" id="embedder-status">已加载</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="model-selector">
+                            <label class="setting-label">选择模型 (精度/速度权衡)</label>
+                            <select id="embedder-model-select" class="select-input" onchange="onEmbedderModelChange(this.value)">
+                                <option value="glint360k_r100" selected>ArcFace R100 (最高精度, 512维)</option>
+                                <option value="glint360k_r50">ArcFace R50 (均衡, 512维)</option>
+                                <option value="glint360k_r18">ArcFace R18 (快速, 512维)</option>
+                                <option value="webface_r50">WebFace R50 (中等精度)</option>
+                            </select>
+                        </div>
+                        <div class="model-info" style="margin-top: 16px;">
+                            <div class="info-row">
+                                <span class="info-label">当前模型</span>
+                                <span class="info-value" id="model-embedder-name">ArcFace R100</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">嵌入维度</span>
+                                <span class="info-value" id="embedder-dim">512</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">状态</span>
+                                <span class="info-value" id="embedder-file-status">✅ 已下载</span>
+                            </div>
+                        </div>
+                        <div id="embedder-download-section" style="margin-top: 16px; display: none;">
+                            <button class="btn btn-primary" onclick="downloadModel('embedder')">
+                                ⬇️ 下载模型
+                            </button>
+                            <div class="progress-bar" id="embedder-progress" style="display: none; margin-top: 8px;">
+                                <div class="progress-fill" id="embedder-progress-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 属性分析模型 -->
+                <div class="card model-card">
+                    <div class="card-header">
+                        <h3>👤 属性分析模型</h3>
+                        <span class="badge badge-success" id="genderage-status">已加载</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="model-info">
+                            <div class="info-row">
+                                <span class="info-label">模型名称</span>
+                                <span class="info-value">Gender-Age</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">功能</span>
+                                <span class="info-value">性别、年龄估计</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">状态</span>
+                                <span class="info-value" id="genderage-file-status">✅ 已下载</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 表情识别模型 -->
+                <div class="card model-card">
+                    <div class="card-header">
+                        <h3>😊 表情识别模型</h3>
+                        <span class="badge badge-success" id="emotion-model-status">已加载</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="model-info">
+                            <div class="info-row">
+                                <span class="info-label">模型名称</span>
+                                <span class="info-value">FER+ Emotion</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">支持表情</span>
+                                <span class="info-value">7种基本表情</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">状态</span>
+                                <span class="info-value" id="emotion-file-status">✅ 已下载</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 推理设置 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>推理设置</h3>
+                </div>
+                <div class="card-body">
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <span class="setting-label">推理设备</span>
+                            <span class="setting-value" id="inference-device">CPU</span>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label">线程数</span>
+                            <span class="setting-value" id="inference-threads">4</span>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label">默认相似度阈值</span>
+                            <span class="setting-value" id="default-threshold">0.5</span>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label">批处理</span>
+                            <span class="setting-value" id="batch-enabled">禁用</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 模型下载说明 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>📥 模型下载</h3>
+                </div>
+                <div class="card-body">
+                    <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                        高精度模型需要单独下载。选择所需模型后点击下载按钮。
+                    </p>
+                    <div class="model-download-list" id="available-models">
+                        <div class="download-item">
+                            <span class="download-name">buffalo_l (推荐套件)</span>
+                            <span class="download-size">~520MB</span>
+                            <span class="download-desc">包含检测、识别、属性分析全套模型</span>
+                            <button class="btn btn-sm btn-primary" onclick="downloadModelPack('buffalo_l')" id="btn-download-buffalo">
+                                下载
+                            </button>
+                        </div>
+                        <div class="download-item">
+                            <span class="download-name">antelopev2</span>
+                            <span class="download-size">~380MB</span>
+                            <span class="download-desc">高精度人脸识别套件</span>
+                            <button class="btn btn-sm btn-secondary" onclick="downloadModelPack('antelopev2')">
+                                下载
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Toast 通知 -->
+    <div id="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
