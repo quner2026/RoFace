@@ -292,11 +292,21 @@ async fn list_tasks_handler<S: FaceStorage>(
     }).collect())
 }
 
+/// Validate that an ID is a valid UUID format to prevent path traversal
+fn is_valid_uuid(id: &str) -> bool {
+    Uuid::parse_str(id).is_ok()
+}
+
 /// Delete a single task
 async fn delete_task_handler<S: FaceStorage>(
     State(state): State<Arc<AppState<S>>>,
     Path(task_id): Path<String>,
 ) -> Result<Json<DeleteResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Validate task_id is a valid UUID to prevent path traversal
+    if !is_valid_uuid(&task_id) {
+        return Err((StatusCode::BAD_REQUEST, Json(ErrorResponse::new("Invalid task ID format", "INVALID_ID"))));
+    }
+
     let deleted = state.storage.delete_task(&task_id).await.map_err(|e| {
         error!("Failed to delete task: {}", e);
         (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse::new(&e.to_string(), "DELETE_FAILED")))
@@ -692,12 +702,17 @@ async fn delete_handler<S: FaceStorage>(
     State(state): State<Arc<AppState<S>>>,
     Path(face_id): Path<String>,
 ) -> Result<Json<DeleteResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Validate face_id is a valid UUID to prevent path traversal attacks
+    if !is_valid_uuid(&face_id) {
+        return Err((StatusCode::BAD_REQUEST, Json(ErrorResponse::new("Invalid face ID format", "INVALID_ID"))));
+    }
+
     let deleted = state.service.delete_face(&face_id).await.map_err(|e| {
         error!("Delete failed: {}", e);
         (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse::new(&e.to_string(), "DELETE_FAILED")))
     })?;
     
-    // Also delete face image
+    // Safely delete face image - face_id is now validated as UUID
     let face_path = std::path::Path::new("data/faces").join(format!("{}.jpg", face_id));
     let _ = std::fs::remove_file(face_path);
 

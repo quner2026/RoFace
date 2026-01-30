@@ -479,8 +479,11 @@ impl SqliteStorage {
             // Delete image file if exists
             if let Some(path) = row.get::<Option<String>, _>("image_path") {
                 if let Some(filename) = path.strip_prefix("/data/tasks/") {
-                    let file_path = std::path::Path::new("data/tasks").join(filename);
-                    let _ = std::fs::remove_file(file_path);
+                    // Security: ensure filename doesn't contain path traversal characters
+                    if !filename.contains("..") && !filename.contains('/') && !filename.contains('\\') {
+                        let file_path = std::path::Path::new("data/tasks").join(filename);
+                        let _ = std::fs::remove_file(file_path);
+                    }
                 }
             }
         }
